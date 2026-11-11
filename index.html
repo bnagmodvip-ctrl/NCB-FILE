@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kho File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<script>
+  // chống nháy màn hình key nếu đã mở khóa trước đó
+  if (localStorage.getItem('unlocked') === '1') {
+    document.documentElement.classList.add('pre-unlocked');
+  }
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ink: #1c1c1c;
+    --ink-soft: #4a4a4a;
+    --paper: #fdfcf8;
+    --paper-2: #faf8f2;
+    --accent: #c4452e;
+    --rule: #e8e4d8;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Patrick Hand', cursive;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    letter-spacing: 0.2px;
+    line-height: 1.5;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(0,0,0,0.015) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(0,0,0,0.015) 0%, transparent 50%);
+  }
+
+  /* grain giấy */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index: 1;
+  }
+
+  /* ============ GATE ============ */
+  #gate {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    z-index: 100;
+    padding: 20px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  #gate.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .pre-unlocked #gate { display: none; }
+
+  .gate-card {
+    background: var(--paper-2);
+    padding: 50px 60px;
+    max-width: 460px;
+    width: 100%;
+    border: 2.5px solid var(--ink);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    box-shadow: 6px 7px 0 rgba(0,0,0,0.08);
+    position: relative;
+  }
+
+  .gate-card h1 {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 2.6rem;
+    margin-bottom: 6px;
+    transform: rotate(-1.5deg);
+    display: inline-block;
+  }
+
+  .gate-card p.sub {
+    font-family: 'Kalam', cursive;
+    font-weight: 300;
+    color: var(--ink-soft);
+    margin-bottom: 30px;
+    font-size: 1rem;
+  }
+
+  .input-wrap { position: relative; margin-bottom: 26px; }
+
+  #keyInput {
+    width: 100%;
+    padding: 12px 4px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.15rem;
+    letter-spacing: 1.5px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--ink);
+    outline: none;
+    color: var(--ink);
+    transition: border-color 0.2s ease;
+  }
+  #keyInput::placeholder {
+    color: #b8b3a3;
+    letter-spacing: 1.5px;
+    font-style: italic;
+  }
+  #keyInput:focus { border-bottom-color: var(--accent); }
+
+  .unlock-btn {
+    width: 100%;
+    padding: 13px;
+    font-family: 'Caveat', cursive;
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    border-radius: 15px 225px 15px 255px / 255px 15px 225px 15px;
+    transition: all 0.25s ease;
+    letter-spacing: 1px;
+  }
+  .unlock-btn:hover {
+    background: var(--accent);
+    transform: rotate(-0.5deg);
+  }
+  .unlock-btn:active {
+    transform: rotate(0.5deg) scale(0.99);
+  }
+
+  .err {
+    color: var(--accent);
+    font-family: 'Kalam', cursive;
+    font-size: 0.95rem;
+    margin-top: 14px;
+    min-height: 20px;
+    text-align: center;
+  }
+
+  /* ============ MAIN ============ */
+  #main {
+    opacity: 0;
+    transition: opacity 0.6s ease 0.2s;
+    position: relative;
+    z-index: 2;
+  }
+  #main.visible { opacity: 1; }
+  .pre-unlocked #main { opacity: 1; }
+
+  header {
+    padding: 44px 8vw 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header h1 {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 3.2rem;
+    transform: rotate(-1deg);
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+  header .sub {
+    font-family: 'Kalam', cursive;
+    font-weight: 300;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+  }
+  .rule {
+    height: 2px;
+    background: var(--ink);
+    border-radius: 2px;
+    transform: rotate(-0.3deg);
+    margin-top: 12px;
+    opacity: 0.85;
+    max-width: 200px;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 8vw 80px;
+  }
+
+  .files {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 40px;
+  }
+
+  .file {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 22px 26px;
+    background: var(--paper-2);
+    border: 2px solid var(--ink);
+    border-radius: 225px 15px 255px 15px / 15px 255px 15px 225px;
+    box-shadow: 4px 5px 0 rgba(0,0,0,0.06);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .file:nth-child(even) {
+    border-radius: 15px 255px 15px 225px / 225px 15px 255px 15px;
+  }
+  .file:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 8px 0 rgba(0,0,0,0.09);
+  }
+
+  .file-icon {
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+  }
+
+  .file-info { flex: 1; min-width: 0; }
+
+  .file-name {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.25rem;
+    color: var(--ink);
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+  .file-meta {
+    font-family: 'Kalam', cursive;
+    font-weight: 300;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+  }
+
+  .dl-btn {
+    flex-shrink: 0;
+    padding: 10px 22px;
+    font-family: 'Caveat', cursive;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+    background: transparent;
+    border: 2.5px solid var(--ink);
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transform: rotate(-0.5deg);
+  }
+  .dl-btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+    transform: rotate(0.5deg) scale(1.03);
+  }
+
+  footer {
+    text-align: center;
+    padding: 30px;
+    font-family: 'Kalam', cursive;
+    font-weight: 300;
+    color: #a8a396;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  @media (max-width: 600px) {
+    .gate-card { padding: 36px 28px; }
+    .gate-card h1 { font-size: 2.1rem; }
+    header h1 { font-size: 2.3rem; }
+    .file { flex-wrap: wrap; gap: 14px; padding: 18px; }
+    .file-info { flex-basis: 100%; }
+    .dl-btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== MÀN HÌNH NHẬP KEY ====== -->
+<div id="gate">
+  <div class="gate-card">
+    <h1>Nhập key mở khoá</h1>
+    <p class="sub">Gõ key được cấp để xem các file bên trong.</p>
+
+    <div class="input-wrap">
+      <input id="keyInput" type="text" placeholder="KEY-CỦA-BẠN" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <button id="unlockBtn" class="unlock-btn">Mở khoá ✦</button>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<!-- ====== NỘI DUNG ====== -->
+<div id="main">
+  <header>
+    <h1>Kho File</h1>
+    <div class="sub">Tổng hợp file tải về — cập nhật thường xuyên.</div>
+    <div class="rule"></div>
+  </header>
+
+  <main>
+    <div class="files" id="files"></div>
+  </main>
+
+  <footer>made with ink &amp; paper · 2026</footer>
+</div>
+
+<script>
+/* =========================================================
+   CẤU HÌNH
+   ========================================================= */
+
+// 🔑 Danh sách key hợp lệ (không phân biệt hoa/thường)
+const VALID_KEYS = [
+  'BREAD2026',
+  'bangtest_1',
+  'INK-DEV-2026'
+];
+
+// 📁 Danh sách file — sửa name / size / desc / url theo nhu cầu
+// url có thể là link Google Drive, link trực tiếp, hoặc đường dẫn tương đối
+const FILES = [
+  { name: 'setup-guide.pdf',   size: '2.4 MB',  desc: 'Hướng dẫn cài đặt chi tiết',            url: '#' },
+  { name: 'source-code.zip',   size: '18.7 MB', desc: 'Toàn bộ mã nguồn dự án',                url: '#' },
+  { name: 'assets-pack.rar',   size: '56.2 MB', desc: 'Bộ tài nguyên hình ảnh & âm thanh',    url: '#' },
+  { name: 'documentation.docx',size: '840 KB',  desc: 'Tài liệu kỹ thuật đầy đủ',              url: '#' }
+];
+
+/* =========================================================
+   LOGIC
+   ========================================================= */
+
+const gate       = document.getElementById('gate');
+const main       = document.getElementById('main');
+const keyInput   = document.getElementById('keyInput');
+const unlockBtn  = document.getElementById('unlockBtn');
+const err        = document.getElementById('err');
+const filesEl    = document.getElementById('files');
+
+// --- Render danh sách file ---
+filesEl.innerHTML = FILES.map(f => `
+  <div class="file">
+    <svg class="file-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M14 8 L38 8 L50 20 L50 56 L14 56 Z"
+            stroke="#1c1c1c" stroke-width="2.2" stroke-linejoin="round" fill="#fdfcf8"/>
+      <path d="M38 8 L38 20 L50 20"
+            stroke="#1c1c1c" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+      <path d="M21 32 L43 32 M21 40 L43 40 M21 48 L35 48"
+            stroke="#1c1c1c" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <div class="file-info">
+      <div class="file-name">${escapeHtml(f.name)}</div>
+      <div class="file-meta">${escapeHtml(f.size)} · ${escapeHtml(f.desc)}</div>
+    </div>
+    <a class="dl-btn" href="${escapeAttr(f.url)}" download>
+      Tải xuống
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 4v12M6 12l6 6 6-6M4 20h16"/>
+      </svg>
+    </a>
+  </div>
+`).join('');
+
+// --- Xử lý tải khi url = "#" (demo) ---
+document.querySelectorAll('.dl-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const href = btn.getAttribute('href');
+    if (!href || href === '#') {
+      e.preventDefault();
+      const original = btn.innerHTML;
+      btn.innerHTML = 'Đang chuẩn bị...';
+      setTimeout(() => { btn.innerHTML = original; }, 900);
+    }
+  });
+});
+
+// --- Kiểm tra key ---
+function tryUnlock() {
+  const k = keyInput.value.trim().toUpperCase();
+  if (!k) {
+    err.textContent = 'Chưa nhập gì cả bạn ơi...';
+    return;
+  }
+  if (VALID_KEYS.includes(k)) {
+    localStorage.setItem('unlocked', '1');
+    err.textContent = '';
+    gate.classList.add('hidden');
+    main.classList.add('visible');
+  } else {
+    err.textContent = 'Key không đúng, thử lại nhé.';
+    keyInput.focus();
+    keyInput.select();
+  }
+}
+
+unlockBtn.addEventListener('click', tryUnlock);
+keyInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') tryUnlock();
+});
+
+// --- Nếu đã mở khóa trước đó thì bỏ qua gate ---
+if (localStorage.getItem('unlocked') === '1') {
+  gate.classList.add('hidden');
+  main.classList.add('visible');
+}
+
+// --- Helper chống XSS nhỏ ---
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escapeAttr(s) {
+  return String(s).replace(/["'<>]/g, c => ({
+    '"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'
+  }[c]));
+}
+</script>
+</body>
+</html>
